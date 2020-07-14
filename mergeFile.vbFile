@@ -1,0 +1,226 @@
+'Copyright JY Sport and Tech
+'email contact: jj1010@gmail.com
+
+Public sourceHeaderList As Scripting.Dictionary
+Public desHeaderList As Scripting.Dictionary
+Public sourceFCList As Scripting.Dictionary 'source first column List
+Public desFCList As Scripting.Dictionary 'destination first column List
+Public sourceSheetName As String
+Public desSheetName As String
+
+Function WorksheetExists(shtName As String, Optional wb As Workbook) As Boolean
+    Dim sht As Worksheet
+
+    If wb Is Nothing Then Set wb = ThisWorkbook
+    On Error Resume Next
+    Set sht = wb.Sheets(shtName)
+    On Error GoTo 0
+    WorksheetExists = Not sht Is Nothing
+
+End Function
+
+
+Function GenHeaderListBySheetName(sheetName As String) As Scripting.Dictionary
+
+    Set headerList = New Scripting.Dictionary
+    
+    If WorksheetExists(sheetName) Then
+        Worksheets(sheetName).Activate
+    Else
+        Debug.Print ("Sheet name :" & sheetName & " does not exist!!")
+    End If
+    
+    Dim lastColumn As Integer
+    
+    foundColumnValue = 0
+    lastColumn = Cells(1, 2000).End(xlToLeft).Column
+    
+    For currentColumn = 1 To lastColumn
+        
+        If IsEmpty(Cells(1, currentColumn).Value) = False Then
+            If Not headerList.Exists(Cells(1, currentColumn).Value) Then
+                headerList.Add Cells(1, currentColumn).Value, currentColumn
+            Else
+                MsgBox ("Error!! Column Name " & "already exist")
+            End If
+        Else
+            Debug.Print ("Warning!! Column Name at Column " & currentColumn & " is empty")
+        End If
+    Next currentColumn
+    
+    Set GenHeaderListBySheetName = headerList
+
+End Function
+
+Function genSourceColumnList(sheetName As String) As Scripting.Dictionary
+
+    Dim lastRow As Integer
+    Dim currentColumn As Integer
+    Dim sht As Worksheet
+    lastRow = 0
+    
+    Set firstColumnList = New Scripting.Dictionary
+    
+    If WorksheetExists(sheetName) Then
+        Set sht = Worksheets(sheetName)
+        sht.Activate
+        lastRow = sht.Cells.SpecialCells(xlCellTypeLastCell).Row
+    Else
+        Debug.Print ("Sheet name :" & sheetName & " does not exist!!")
+        Stop
+    End If
+    
+    
+    foundRowValue = 0
+    currentColumn = 1
+    
+    For currentRow = 2 To lastRow
+        
+        If Not IsEmpty(Cells(currentRow, currentColumn).Value) Then
+            If Not firstColumnList.Exists(Cells(currentRow, currentColumn).Value) Then
+                Debug.Print ("Adding " & Cells(currentRow, currentColumn).Value & " to FC list ")
+                firstColumnList.Add Cells(currentRow, currentColumn).Value, currentRow
+            Else
+                MsgBox ("Error!! Row Name " & Cells(currentRow, currentColumn).Value & " already exist")
+            End If
+        Else
+            Debug.Print ("Warning!! Column Name at Column " & currentRow & " is empty")
+        End If
+    Next currentRow
+    
+    Set sht = Nothing
+    Set genSourceColumnList = firstColumnList
+    
+
+End Function
+
+Sub GenAllList()
+
+    Set sourceHeaderList = New Scripting.Dictionary
+    sourceHeaderList.CompareMode = BinaryCompare
+    
+    Set sourceFCList = New Scripting.Dictionary
+    sourceFCList.CompareMode = BinaryCompare
+    
+    Set desHeaderList = New Scripting.Dictionary
+    desHeaderList.CompareMode = BinaryCompare
+    
+    Set desFCList = New Scripting.Dictionary
+    desFCList.CompareMode = BinaryCompare
+    
+    
+    
+    'Set rulesHeaderList = New Scripting.Dictionary
+    
+    Set sourceHeaderList = GenHeaderListBySheetName(sourceSheetName)
+    Set sourceFCList = genSourceColumnList(sourceSheetName)
+    Set desHeaderList = GenHeaderListBySheetName(desSheetName)
+    Set desFCList = genSourceColumnList(desSheetName)
+    'Set rulesHeaderList = GenHeaderListBySheetName("Rules")
+    
+    Dim key As Variant
+    For Each key In desFCList.Keys
+        Debug.Print key, desFCList(key)
+    Next key
+
+End Sub
+
+Sub MergeHeaderFirst()
+
+    Dim currSheet As Worksheet
+    Dim currDictKey As Variant
+    
+    Set currSheet = ActiveWorkbook.Sheets(desSheetName)
+    currSheet.Activate
+    
+    For Each currDictKey In sourceHeaderList.Keys
+        If desHeaderList.Exists(currDictKey) Then
+            Debug.Print ("current key name is exist :" & currDictKey)
+        Else
+            ' inserting the new column from source to newDes
+            Debug.Print ("current key name not exist and going to insert :" & currDictKey)
+            insertAtColumn = desHeaderList.Count + 1
+            currSheet.Cells(1, insertAtColumn).Value = currDictKey
+            desHeaderList.Add currDictKey, insertAtColumn
+        End If
+    Next currDictKey
+
+End Sub
+
+Sub thenMergeRow()
+
+    Dim currSheet As Worksheet
+    Dim currDictKey As Variant
+    
+    Debug.Print ("in merge row")
+    
+    Set currSheet = ActiveWorkbook.Sheets(desSheetName)
+    currSheet.Activate
+    
+    For Each currDictKey In sourceFCList.Keys
+        If desFCList.Exists(currDictKey) Then
+            Debug.Print ("current key name is exist :" & currDictKey)
+        Else
+            ' inserting the new column from source to newDes
+            Debug.Print ("current key name not exist and going to insert :" & currDictKey)
+            insertAtRow = desFCList.Count + 2 'Plus 2 because first row is the header
+            currSheet.Cells(insertAtRow, 1).Value = currDictKey
+            desFCList.Add currDictKey, insertAtRow
+        End If
+    Next currDictKey
+
+End Sub
+
+
+
+Function cleanSpace(contentStr As String) As String
+
+    cleanSpace = Replace(contentStr, Chr(160), "")
+    cleanSpace = Application.WorksheetFunction.Clean(Trim(cleanSpace))
+
+End Function
+
+Sub FillEmptyContentFromSource()
+
+    Dim currSheet As Worksheet
+    Dim currRowDictKey, currColDictKey As Variant
+    Dim sumOfCellCopied As Integer
+    
+    Set currSheet = Sheets(desSheetName)
+    currSheet.Activate
+    sumOfCellCopied = 0
+    
+    For Each currColDictKey In desFCList.Keys
+        If sourceFCList.Exists(currColDictKey) Then
+            For Each currRowDictKey In sourceHeaderList.Keys
+                If IsEmpty(Cells(desFCList(currColDictKey), desHeaderList(currRowDictKey))) Then
+                    Cells(desFCList(currColDictKey), desHeaderList(currRowDictKey)).Value = Sheets(sourceSheetName).Cells(sourceFCList(currColDictKey), sourceHeaderList(currRowDictKey)).Value
+                    sumOfCellCopied = sumOfCellCopied + 1
+                End If
+            Next currRowDictKey
+        End If
+    Next currColDictKey
+    MsgBox ("Completed!! " & sumOfCellCopied & " cells copied")
+
+End Sub
+
+Sub newBaseSheet()
+    
+    ActiveWorkbook.Sheets(desSheetName).Copy After:=Worksheets(Sheets.Count)
+    On Error Resume Next
+    ActiveSheet.Name = "new" & desSheetName
+
+End Sub
+
+Sub StartCopy()
+
+    desSheetName = ActiveWorkbook.Sheets("Start").Cells(2, 2).Value
+    sourceSheetName = ActiveWorkbook.Sheets("Start").Cells(3, 2).Value
+    newBaseSheet
+    desSheetName = "new" & desSheetName
+    GenAllList
+    MergeHeaderFirst 'and append missing column to tail
+    thenMergeRow
+    FillEmptyContentFromSource
+
+End Sub
