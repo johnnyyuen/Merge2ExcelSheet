@@ -2,7 +2,7 @@
 
 This Macro enabled spreadsheet is use to merge two excel spreadsheet one from other into a new spreadsheet with refer to the first column of each table.
 
-[Show Image](mergeFile.jpg)
+![Show Image](mergeFile.jpg?raw=true "Merge File")
 
 ## Usage
 1. Simply copy your content into Table A and Table B (sheet name is editable).
