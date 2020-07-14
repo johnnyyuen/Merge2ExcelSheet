@@ -1,6 +1,6 @@
 # Merge2ExcelSheet
 
-This file is use to merge two excel spreadsheet one from other into a new spreadsheet
+This Macro enabled spreadsheet is use to merge two excel spreadsheet one from other into a new spreadsheet with refer to the first column of each table.
 
 ## Usage
 1. Simply copy your content into Table A and Table B (sheet name is editable).
